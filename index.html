@@ -77,41 +77,62 @@
   /* ---------- Projector view ---------- */
   body.projector{
     background:#0a1a3e; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; gap:0;
-    border: 8px solid #c8a84b;
+    align-items:center; justify-content:space-between;
+    height:100vh; overflow:hidden;
+    box-shadow: inset 0 0 0 8px #c8a84b;
   }
+
+  /* Logo header */
+  #projectorHeader{
+    display:flex; flex-direction:column; align-items:center;
+    padding:2.5vh 4vw 0;
+    width:100%;
+  }
+  #projectorLogo{
+    height:22vh; width:auto; max-width:70vw;
+    object-fit:contain;
+    filter: drop-shadow(0 4px 24px rgba(200,168,75,0.45));
+  }
+  .gold-rule{
+    width:60%; height:1px; margin-top:1.5vh;
+    background: linear-gradient(90deg, transparent, #c8a84b, #ffd700, #c8a84b, transparent);
+  }
+
+  /* Timer centre */
   #projectorInner{
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    width:100%; padding:2vw 4vw;
-    border-top:3px solid rgba(200,168,75,0.3);
-    border-bottom:3px solid rgba(200,168,75,0.3);
+    flex:1;
   }
   #bigDisplay{
-    font-size:18vw; font-weight:700; font-variant-numeric:tabular-nums;
-    letter-spacing:0.05em; color:#ffd700; transition:color .3s;
-    text-shadow: 0 0 40px rgba(255,215,0,0.35), 0 2px 0 rgba(180,140,0,0.6);
+    font-size:15vw; font-weight:700; font-variant-numeric:tabular-nums;
+    letter-spacing:0.05em; color:#ffd700; transition:color .3s; line-height:1;
+    text-shadow: 0 0 60px rgba(255,215,0,0.3), 0 3px 0 rgba(150,110,0,0.7);
   }
   #bigDisplay.stopped{
     color:#c8a84b;
-    text-shadow: 0 0 20px rgba(200,168,75,0.2);
+    text-shadow: 0 0 20px rgba(200,168,75,0.15);
   }
   #bigDisplay.finished{
     color:#ffe566; animation:pulse 1s ease-in-out infinite;
-    text-shadow: 0 0 100px rgba(255,215,0,0.8), 0 0 40px rgba(255,215,0,0.5);
+    text-shadow: 0 0 120px rgba(255,215,0,0.9), 0 0 50px rgba(255,215,0,0.6);
   }
   #modeLabel{
-    font-size:2vw; color:#c8a84b; letter-spacing:8px; text-transform:uppercase; margin-top:-0.5vw;
-    border-top: 1px solid rgba(200,168,75,0.4); padding-top:0.8vw; width:100%; text-align:center;
+    font-size:1.8vw; color:#c8a84b; letter-spacing:8px;
+    text-transform:uppercase; margin-top:1.5vh; text-align:center;
   }
-  #projectorCorner{
-    position:fixed; top:0; left:0; right:0;
+
+  /* Bottom footer */
+  #projectorFooter{
     display:flex; justify-content:space-between; align-items:center;
-    padding:1vw 2vw;
-    background: linear-gradient(180deg, rgba(10,26,62,0.95) 0%, transparent 100%);
+    width:100%; padding:0 2.5vw 2vh;
   }
   .corner-dot{
-    width:1.2vw; height:1.2vw; border-radius:50%; background:#c8a84b;
-    box-shadow:0 0 8px rgba(200,168,75,0.6);
+    width:1vw; height:1vw; border-radius:50%; background:#c8a84b;
+    box-shadow:0 0 10px rgba(200,168,75,0.7);
+  }
+  .footer-rule{
+    flex:1; height:1px; margin:0 1.5vw;
+    background: linear-gradient(90deg, transparent, rgba(200,168,75,0.5), transparent);
   }
 </style>
 </head>
@@ -124,13 +145,18 @@
 
   if(isProjector){
     document.body.innerHTML = `
-      <div id="projectorCorner">
-        <div class="corner-dot"></div>
-        <div class="corner-dot"></div>
+      <div id="projectorHeader">
+        <img id="projectorLogo" src="logo.png" alt="24 Hours with the King">
+        <div class="gold-rule"></div>
       </div>
       <div id="projectorInner">
         <div id="bigDisplay">00:00:00</div>
         <div id="modeLabel">--</div>
+      </div>
+      <div id="projectorFooter">
+        <div class="corner-dot"></div>
+        <div class="footer-rule"></div>
+        <div class="corner-dot"></div>
       </div>
     `;
   } else {
