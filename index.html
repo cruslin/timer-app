@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Timer</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --accent:#4f9dff; --accent2:#ff5d5d;
+    --text:#e9edf3; --muted:#8b93a3;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; min-height:100vh; background:var(--bg); color:var(--text);
+    font-family:-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+
+  /* ---------- Control view ---------- */
+  body.control{
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .card{
+    background:var(--panel); border-radius:16px; padding:32px;
+    width:100%; max-width:480px; box-shadow:0 10px 40px rgba(0,0,0,.4);
+  }
+  h1{font-size:18px; font-weight:600; margin:0 0 20px; color:var(--muted); letter-spacing:2px;}
+  .modes{display:flex; gap:8px; margin-bottom:24px;}
+  .modes button{
+    flex:1; padding:10px; border-radius:8px; border:1px solid #2a2f3a;
+    background:#1d2129; color:var(--text); cursor:pointer; font-size:13px; transition:all .15s;
+  }
+  .modes button.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .modes button:hover:not(.active){border-color:var(--accent);}
+
+  .display{
+    font-size:56px; font-variant-numeric:tabular-nums; text-align:center;
+    font-weight:700; letter-spacing:2px; margin:20px 0;
+    transition:color .2s;
+  }
+  .display.editable{cursor:pointer;}
+  .display.editable:hover{color:var(--accent);}
+  .display.finished{color:var(--accent2); animation:pulse 1s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:.4;}}
+
+  .edit-row{display:flex; gap:8px; justify-content:center; margin-bottom:20px; align-items:center;}
+  .edit-row label{font-size:11px; color:var(--muted); text-align:center;}
+  .edit-col{display:flex; flex-direction:column; align-items:center; gap:4px;}
+  .edit-row input{
+    width:60px; padding:8px; text-align:center; font-size:18px;
+    background:#1d2129; border:1px solid #2a2f3a; color:var(--text); border-radius:8px;
+  }
+  .edit-row input:focus{outline:none; border-color:var(--accent);}
+  #applyEdit{
+    padding:0 16px; height:40px; border-radius:8px; border:none;
+    background:var(--accent); color:#fff; cursor:pointer; font-size:14px; font-weight:600;
+  }
+
+  .controls{display:flex; gap:10px; margin-bottom:16px;}
+  .controls button{
+    flex:1; padding:14px; border:none; border-radius:10px; font-size:15px;
+    font-weight:600; cursor:pointer; color:#fff; transition:opacity .15s;
+  }
+  .controls button:hover{opacity:.85;}
+  #startStop{background:var(--accent);}
+  #startStop.running{background:var(--accent2);}
+  #reset{background:#2a2f3a;}
+
+  #project{
+    width:100%; padding:14px; border:1px solid var(--accent); background:transparent;
+    color:var(--accent); border-radius:10px; cursor:pointer; font-size:15px; font-weight:600;
+    transition:all .15s;
+  }
+  #project:hover{background:var(--accent); color:#fff;}
+  .hint{font-size:12px; color:var(--muted); text-align:center; margin-top:12px;}
+  .mode-hint{font-size:12px; color:var(--muted); text-align:center; margin-bottom:8px; min-height:16px;}
+
+  /* ---------- Projector view ---------- */
+  body.projector{
+    background:#000; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:0;
+  }
+  #bigDisplay{
+    font-size:18vw; font-weight:700; font-variant-numeric:tabular-nums;
+    letter-spacing:0.05em; color:#fff; transition:color .3s;
+  }
+  #bigDisplay.stopped{color:#555;}
+  #bigDisplay.finished{color:var(--accent2); animation:pulse 1s ease-in-out infinite;}
+  #modeLabel{
+    font-size:2vw; color:#444; letter-spacing:4px; text-transform:uppercase; margin-top:-1vw;
+  }
+</style>
+</head>
+<body>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const isProjector = params.get('view') === 'projector';
+  document.body.className = isProjector ? 'projector' : 'control';
+
+  if(isProjector){
+    document.body.innerHTML = `
+      <div id="bigDisplay">00:00:00</div>
+      <div id="modeLabel">--</div>
+    `;
+  } else {
+    document.body.innerHTML = `
+      <div class="card">
+        <h1>TIMER</h1>
+        <div class="modes">
+          <button data-mode="countup" class="active">Count Up</button>
+          <button data-mode="countdown">Countdown</button>
+          <button data-mode="stopwatch">Stopwatch</button>
+        </div>
+        <p class="mode-hint" id="modeHint">Counts up from a set start time. Click the display to edit.</p>
+        <div class="display editable" id="display" title="Click to edit time">00:00:00</div>
+        <div class="edit-row" id="editRow" style="display:none;">
+          <div class="edit-col">
+            <input type="number" id="h" min="0" max="23" value="0">
+            <label>HH</label>
+          </div>
+          <div class="edit-col">
+            <input type="number" id="m" min="0" max="59" value="0">
+            <label>MM</label>
+          </div>
+          <div class="edit-col">
+            <input type="number" id="s" min="0" max="59" value="0">
+            <label>SS</label>
+          </div>
+          <button id="applyEdit">Set</button>
+        </div>
+        <div class="controls">
+          <button id="startStop">Start</button>
+          <button id="reset">Reset</button>
+        </div>
+        <button id="project">&#128250; Project to Second Screen</button>
+        <p class="hint">Opens a fullscreen timer window &mdash; drag it to your projector/TV, then press F11.</p>
+        <p class="hint">Keyboard: <strong>Space</strong> = Start/Stop &nbsp;|&nbsp; <strong>R</strong> = Reset</p>
+      </div>
+    `;
+  }
+</script>
+
+<script>
+(function(){
+  const MAX_SECONDS = 24 * 3600;
+  const channel = new BroadcastChannel('timer-sync');
+
+  function fmt(secs){
+    secs = Math.max(0, Math.min(secs, MAX_SECONDS));
+    const h = String(Math.floor(secs / 3600)).padStart(2, '0');
+    const m = String(Math.floor((secs % 3600) / 60)).padStart(2, '0');
+    const s = String(secs % 60).padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  }
+
+  /* ---- Audio beep using Web Audio API (no external files needed) ---- */
+  function beep(frequency, duration, volume){
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = frequency;
+      gain.gain.setValueAtTime(volume, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + duration);
+    } catch(e){ /* audio not available */ }
+  }
+
+  /* ============================
+     PROJECTOR VIEW
+     ============================ */
+  if(isProjector){
+    const bigDisplay = document.getElementById('bigDisplay');
+    const modeLabel  = document.getElementById('modeLabel');
+    const modeNames  = { countup:'Count Up', countdown:'Countdown', stopwatch:'Stopwatch' };
+
+    channel.onmessage = (e) => {
+      const { display, running, finished, mode } = e.data;
+      bigDisplay.textContent = display;
+      bigDisplay.classList.toggle('stopped', !running && !finished);
+      bigDisplay.classList.toggle('finished', !!finished);
+      modeLabel.textContent = modeNames[mode] || '';
+    };
+
+    document.body.addEventListener('click', () => {
+      if(!document.fullscreenElement) document.documentElement.requestFullscreen();
+    });
+    return;
+  }
+
+  /* ============================
+     CONTROL VIEW
+     ============================ */
+  const MODE_HINTS = {
+    countup:   'Counts up from a set start time. Click the display to edit.',
+    countdown: 'Counts down to zero. Click the display to set the duration.',
+    stopwatch: 'Classic stopwatch. Always starts from zero.',
+  };
+
+  let mode          = 'countup';
+  let totalSeconds  = 0;
+  let targetSeconds = 0;   // for countdown reset
+  let running       = false;
+  let finished      = false;
+  let intervalId    = null;
+
+  const display     = document.getElementById('display');
+  const startStopBtn = document.getElementById('startStop');
+  const resetBtn    = document.getElementById('reset');
+  const editRow     = document.getElementById('editRow');
+  const projectBtn  = document.getElementById('project');
+  const modeHint    = document.getElementById('modeHint');
+
+  function broadcast(){
+    channel.postMessage({ display: fmt(totalSeconds), running, finished, mode });
+  }
+
+  function render(){
+    display.textContent = fmt(totalSeconds);
+    display.classList.toggle('finished', finished);
+    broadcast();
+  }
+
+  function applyMode(newMode){
+    mode = newMode;
+    finished = false;
+
+    // Stopwatch: lock editing, always reset to 0
+    if(mode === 'stopwatch'){
+      display.classList.remove('editable');
+      display.title = '';
+    } else {
+      display.classList.add('editable');
+      display.title = 'Click to edit time';
+    }
+
+    modeHint.textContent = MODE_HINTS[mode];
+    totalSeconds = (mode === 'countdown') ? targetSeconds : 0;
+    editRow.style.display = 'none';
+    render();
+  }
+
+  function tick(){
+    if(mode === 'countdown'){
+      totalSeconds--;
+      if(totalSeconds <= 0){
+        totalSeconds = 0;
+        finished = true;
+        stop();
+        beep(880, 0.8, 0.4);
+        setTimeout(() => beep(880, 0.8, 0.4), 900);
+        setTimeout(() => beep(1100, 1.2, 0.4), 1800);
+        return;
+      }
+    } else {
+      totalSeconds++;
+      if(totalSeconds >= MAX_SECONDS){
+        totalSeconds = MAX_SECONDS;
+        stop();
+        return;
+      }
+    }
+    render();
+  }
+
+  function start(){
+    if(running) return;
+    finished = false;
+    running = true;
+    startStopBtn.textContent = 'Stop';
+    startStopBtn.classList.add('running');
+    intervalId = setInterval(tick, 1000);
+    broadcast();
+  }
+
+  function stop(){
+    running = false;
+    startStopBtn.textContent = 'Start';
+    startStopBtn.classList.remove('running');
+    clearInterval(intervalId);
+    render();
+  }
+
+  function reset(){
+    stop();
+    finished = false;
+    totalSeconds = (mode === 'countdown') ? targetSeconds : 0;
+    render();
+  }
+
+  function openEditRow(){
+    if(mode === 'stopwatch') return;
+    const isOpen = editRow.style.display !== 'none';
+    if(isOpen){ editRow.style.display = 'none'; return; }
+    document.getElementById('h').value = Math.floor(totalSeconds / 3600);
+    document.getElementById('m').value = Math.floor((totalSeconds % 3600) / 60);
+    document.getElementById('s').value = totalSeconds % 60;
+    editRow.style.display = 'flex';
+    document.getElementById('h').focus();
+  }
+
+  /* ---- Event listeners ---- */
+  startStopBtn.addEventListener('click', () => running ? stop() : start());
+  resetBtn.addEventListener('click', reset);
+  display.addEventListener('click', openEditRow);
+
+  document.getElementById('applyEdit').addEventListener('click', () => {
+    const h = Math.min(23, Math.max(0, parseInt(document.getElementById('h').value) || 0));
+    const m = Math.min(59, Math.max(0, parseInt(document.getElementById('m').value) || 0));
+    const s = Math.min(59, Math.max(0, parseInt(document.getElementById('s').value) || 0));
+    const secs = Math.min(h * 3600 + m * 60 + s, MAX_SECONDS);
+    totalSeconds = secs;
+    if(mode === 'countdown') targetSeconds = secs;
+    editRow.style.display = 'none';
+    finished = false;
+    render();
+  });
+
+  document.querySelectorAll('.modes button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(btn.dataset.mode === mode) return;
+      document.querySelectorAll('.modes button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      stop();
+      applyMode(btn.dataset.mode);
+    });
+  });
+
+  projectBtn.addEventListener('click', () => {
+    window.open(window.location.pathname + '?view=projector', 'projector',
+      'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no');
+    broadcast();
+  });
+
+  /* ---- Keyboard shortcuts ---- */
+  document.addEventListener('keydown', (e) => {
+    if(e.target.tagName === 'INPUT') return;
+    if(e.code === 'Space'){
+      e.preventDefault();
+      running ? stop() : start();
+    }
+    if(e.key.toLowerCase() === 'r') reset();
+    if(e.key === 'Escape') editRow.style.display = 'none';
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
