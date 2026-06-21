@@ -76,17 +76,19 @@
 
   /* ---------- Projector view ---------- */
   body.projector{
-    background:#000; display:flex; flex-direction:column;
+    background:#0a1a3e; display:flex; flex-direction:column;
     align-items:center; justify-content:center; gap:0;
   }
   #bigDisplay{
     font-size:18vw; font-weight:700; font-variant-numeric:tabular-nums;
-    letter-spacing:0.05em; color:#fff; transition:color .3s;
+    letter-spacing:0.05em; color:#ffffff; transition:color .3s;
+    text-shadow: 0 0 60px rgba(255,215,0,0.15);
   }
-  #bigDisplay.stopped{color:#555;}
-  #bigDisplay.finished{color:var(--accent2); animation:pulse 1s ease-in-out infinite;}
+  #bigDisplay.stopped{color:#c8a84b;}
+  #bigDisplay.finished{color:#ffd700; animation:pulse 1s ease-in-out infinite;
+    text-shadow: 0 0 80px rgba(255,215,0,0.5);}
   #modeLabel{
-    font-size:2vw; color:#444; letter-spacing:4px; text-transform:uppercase; margin-top:-1vw;
+    font-size:2vw; color:#c8a84b; letter-spacing:6px; text-transform:uppercase; margin-top:-1vw;
   }
 </style>
 </head>
