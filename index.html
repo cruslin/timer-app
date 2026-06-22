@@ -262,7 +262,82 @@
   let targetSeconds = 0;   // for countdown reset
   let running       = false;
   let finished      = false;
-  let intervalId    = null;
+  let animFrameId   = null;
+  let bgTimerId     = null;  // background timer (always runs)
+  let startTime     = 0;   // timestamp when timer started (actual time now)
+  let startValue    = 0;   // display value when timer started
+  let lastDisplayedSecs = -1;  // to avoid unnecessary renders
+
+  const STORAGE_KEY = 'timerState';
+
+  function saveState(){
+    const state = {
+      mode,
+      totalSeconds,
+      targetSeconds,
+      startTime,
+      startValue,
+      running,
+      finished
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function loadState(){
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if(!saved) return false;
+
+    try {
+      const state = JSON.parse(saved);
+      const timePassed = Math.floor((Date.now() - state.startTime) / 1000);
+
+      // Restore state
+      mode = state.mode;
+      targetSeconds = state.targetSeconds;
+      finished = state.finished;
+
+      if(state.running){
+        // Timer was running - calculate current time based on actual elapsed device time
+        if(mode === 'countdown'){
+          totalSeconds = Math.max(0, state.startValue - timePassed);
+          if(totalSeconds === 0){
+            finished = true;
+            running = false;
+            saveState();
+          } else {
+            running = true;
+            startTime = state.startTime;
+            startValue = state.startValue;
+          }
+        } else {
+          // For countup and stopwatch: display = startValue + elapsed
+          totalSeconds = Math.min(MAX_SECONDS, state.startValue + timePassed);
+          if(totalSeconds >= MAX_SECONDS){
+            totalSeconds = MAX_SECONDS;
+            running = false;
+          } else {
+            running = true;
+            startTime = state.startTime;
+            startValue = state.startValue;
+          }
+        }
+      } else {
+        // Timer was paused
+        totalSeconds = state.totalSeconds;
+        running = false;
+      }
+
+      lastDisplayedSecs = Math.floor(totalSeconds);
+      return true;
+    } catch(e){
+      localStorage.removeItem(STORAGE_KEY);
+      return false;
+    }
+  }
+
+  function clearState(){
+    localStorage.removeItem(STORAGE_KEY);
+  }
 
   const display     = document.getElementById('display');
   const startStopBtn = document.getElementById('startStop');
@@ -278,6 +353,7 @@
   function render(){
     display.textContent = fmt(totalSeconds);
     display.classList.toggle('finished', finished);
+    saveState();
     broadcast();
   }
 
@@ -297,15 +373,19 @@
     modeHint.textContent = MODE_HINTS[mode];
     totalSeconds = (mode === 'countdown') ? targetSeconds : 0;
     editRow.style.display = 'none';
+    saveState();
     render();
   }
 
-  function tick(){
+  function updateTimer(){
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    let newTotal;
+
     if(mode === 'countdown'){
-      totalSeconds--;
-      if(totalSeconds <= 0){
-        totalSeconds = 0;
+      newTotal = Math.max(0, startValue - elapsed);
+      if(newTotal === 0 && !finished){
         finished = true;
+        totalSeconds = 0;
         stop();
         beep(880, 0.8, 0.4);
         setTimeout(() => beep(880, 0.8, 0.4), 900);
@@ -313,23 +393,47 @@
         return;
       }
     } else {
-      totalSeconds++;
-      if(totalSeconds >= MAX_SECONDS){
-        totalSeconds = MAX_SECONDS;
+      // For countup and stopwatch: display = startValue + elapsed
+      newTotal = Math.min(MAX_SECONDS, startValue + elapsed);
+      if(newTotal >= MAX_SECONDS){
         stop();
         return;
       }
     }
-    render();
+
+    // Only update if seconds changed
+    if(Math.floor(newTotal) !== lastDisplayedSecs){
+      totalSeconds = newTotal;
+      lastDisplayedSecs = Math.floor(newTotal);
+      render();
+    }
+  }
+
+  function animationLoop(){
+    if(running) updateTimer();
+    animFrameId = requestAnimationFrame(animationLoop);
+  }
+
+  function backgroundTick(){
+    // This runs even when tab is hidden/minimized
+    if(running) updateTimer();
   }
 
   function start(){
     if(running) return;
     finished = false;
     running = true;
+    startTime = Date.now();  // Actual time when timer started
+    startValue = totalSeconds;  // Display value at start
+    lastDisplayedSecs = Math.floor(totalSeconds);
     startStopBtn.textContent = 'Stop';
     startStopBtn.classList.add('running');
-    intervalId = setInterval(tick, 1000);
+    
+    // Start both RAF loop (smooth updates when visible) and background timer
+    animFrameId = requestAnimationFrame(animationLoop);
+    bgTimerId = setInterval(backgroundTick, 500);  // Check every 500ms even when hidden
+    
+    saveState();
     broadcast();
   }
 
@@ -337,7 +441,9 @@
     running = false;
     startStopBtn.textContent = 'Start';
     startStopBtn.classList.remove('running');
-    clearInterval(intervalId);
+    cancelAnimationFrame(animFrameId);
+    clearInterval(bgTimerId);
+    saveState();
     render();
   }
 
@@ -345,6 +451,7 @@
     stop();
     finished = false;
     totalSeconds = (mode === 'countdown') ? targetSeconds : 0;
+    clearState();
     render();
   }
 
@@ -403,6 +510,25 @@
     if(e.key === 'Escape') editRow.style.display = 'none';
   });
 
+  /* ---- Initialize: Load saved state or start fresh ---- */
+  if(loadState()){
+    // Restored from storage
+    document.querySelectorAll('.modes button').forEach(b => b.classList.remove('active'));
+    document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+    modeHint.textContent = MODE_HINTS[mode];
+    
+    if(running){
+      // Automatically resume the timer
+      startStopBtn.textContent = 'Stop';
+      startStopBtn.classList.add('running');
+      animFrameId = requestAnimationFrame(animationLoop);
+      bgTimerId = setInterval(backgroundTick, 500);
+    }
+  } else {
+    // Fresh start
+    applyMode('countup');
+  }
+  
   render();
 })();
 </script>
