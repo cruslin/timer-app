@@ -1,0 +1,29 @@
+{
+  "name": "timer-app-desktop",
+  "productName": "Timer",
+  "version": "1.0.0",
+  "description": "Desktop shell for the Timer app. The app content updates itself over the air.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "prebuild": "cd .. && node build.mjs && cd desktop && node -e \"require('fs').mkdirSync('app',{recursive:true});require('fs').copyFileSync('../dist/Timer.html','app/Timer.html')\"",
+    "start": "npm run prebuild && electron .",
+    "build": "npm run prebuild && electron-builder --win portable"
+  },
+  "build": {
+    "appId": "org.riders.timer",
+    "productName": "Timer",
+    "files": ["main.js", "app/**/*"],
+    "win": {
+      "target": "portable",
+      "signAndEditExecutable": false,
+      "icon": "icon.png"
+    },
+    "portable": { "artifactName": "Timer.exe" },
+    "directories": { "output": "release" }
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}
