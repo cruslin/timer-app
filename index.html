@@ -44,35 +44,40 @@
 </script>
 <style>
   :root{
-    --bg:#0f1115; --panel:#171a21; --accent:#4f9dff; --accent2:#ff5d5d;
-    --text:#e9edf3; --muted:#8b93a3;
+    --bg:#0c1016; --panel:#151b24; --panel-2:#1b2330; --accent:#78b7ff; --accent2:#ff766f;
+    --text:#f3f6fb; --muted:#98a4b5; --line:#2b3747;
   }
   *{box-sizing:border-box;}
   html,body{
-    margin:0; min-height:100vh; background:var(--bg); color:var(--text);
-    font-family:-apple-system,Segoe UI,Roboto,sans-serif;
+    margin:0; min-height:100%; background:var(--bg); color:var(--text);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
   }
 
   /* ---------- Control view ---------- */
   body.control{
-    display:flex; align-items:center; justify-content:center; padding:24px;
+    min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:24px;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(120,183,255,.11), transparent 38%),
+      linear-gradient(145deg,#0b0f15 0%,#101722 100%);
   }
   .card{
-    background:var(--panel); border-radius:16px; padding:32px;
-    width:100%; max-width:480px; box-shadow:0 10px 40px rgba(0,0,0,.4);
+    background:rgba(21,27,36,.94); border:1px solid rgba(152,164,181,.14);
+    border-radius:24px; padding:32px; width:100%; max-width:500px;
+    box-shadow:0 24px 80px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.035);
   }
-  h1{font-size:18px; font-weight:600; margin:0 0 20px; color:var(--muted); letter-spacing:2px;}
+  h1{font-size:11px; font-weight:700; margin:0 0 22px; color:var(--muted); letter-spacing:.18em; text-transform:uppercase;}
   .modes{display:flex; gap:8px; margin-bottom:24px;}
   .modes button{
-    flex:1; padding:10px; border-radius:8px; border:1px solid #2a2f3a;
-    background:#1d2129; color:var(--text); cursor:pointer; font-size:13px; transition:all .15s;
+    flex:1; padding:11px 8px; border-radius:10px; border:1px solid var(--line);
+    background:rgba(255,255,255,.025); color:var(--muted); cursor:pointer; font-size:13px; font-weight:600; transition:all .2s ease;
   }
-  .modes button.active{background:var(--accent); border-color:var(--accent); color:#fff;}
-  .modes button:hover:not(.active){border-color:var(--accent);}
+  .modes button.active{background:var(--accent); border-color:var(--accent); color:#07111f; box-shadow:0 6px 20px rgba(120,183,255,.2);}
+  .modes button:hover:not(.active){border-color:var(--accent); color:var(--text);}
 
   .display{
-    font-size:56px; font-variant-numeric:tabular-nums; text-align:center;
-    font-weight:700; letter-spacing:2px; margin:20px 0;
+    font-size:clamp(48px,11vw,72px); font-variant-numeric:tabular-nums; text-align:center;
+    font-weight:750; letter-spacing:.015em; margin:26px 0 22px;
     transition:color .2s;
   }
   .display.editable{cursor:pointer;}
@@ -85,38 +90,40 @@
   .edit-col{display:flex; flex-direction:column; align-items:center; gap:4px;}
   .edit-row input{
     width:60px; padding:8px; text-align:center; font-size:18px;
-    background:#1d2129; border:1px solid #2a2f3a; color:var(--text); border-radius:8px;
+    background:#10161f; border:1px solid var(--line); color:var(--text); border-radius:9px;
   }
-  .edit-row input:focus{outline:none; border-color:var(--accent);}
+  .edit-row input:focus{outline:3px solid rgba(120,183,255,.2); border-color:var(--accent);}
   #applyEdit{
-    padding:0 16px; height:40px; border-radius:8px; border:none;
-    background:var(--accent); color:#fff; cursor:pointer; font-size:14px; font-weight:600;
+    padding:0 16px; height:40px; border-radius:9px; border:none;
+    background:var(--accent); color:#07111f; cursor:pointer; font-size:14px; font-weight:700;
   }
 
   .controls{display:flex; gap:10px; margin-bottom:16px;}
   .controls button{
-    flex:1; padding:14px; border:none; border-radius:10px; font-size:15px;
-    font-weight:600; cursor:pointer; color:#fff; transition:opacity .15s;
+    flex:1; padding:14px; border:none; border-radius:11px; font-size:15px;
+    font-weight:700; cursor:pointer; color:#07111f; transition:transform .2s ease, filter .2s ease;
   }
-  .controls button:hover{opacity:.85;}
+  .controls button:hover{filter:brightness(1.08); transform:translateY(-1px);}
+  button:active{transform:translateY(1px) scale(.985);}
+  button:focus-visible{outline:3px solid rgba(120,183,255,.48); outline-offset:3px;}
   #startStop{background:var(--accent);}
-  #startStop.running{background:var(--accent2);}
-  #reset{background:#2a2f3a;}
+  #startStop.running{background:var(--accent2); color:#210907;}
+  #reset{background:#293545; color:var(--text);}
 
   #project{
-    width:100%; padding:14px; border:1px solid var(--accent); background:transparent;
+    width:100%; padding:14px; border:1px solid rgba(120,183,255,.55); background:transparent;
     color:var(--accent); border-radius:10px; cursor:pointer; font-size:15px; font-weight:600;
-    transition:all .15s;
+    transition:all .2s ease;
   }
-  #project:hover{background:var(--accent); color:#fff;}
   #project2{
     width:100%; padding:14px; border:1px solid var(--accent); background:transparent;
     color:var(--accent); border-radius:10px; cursor:pointer; font-size:15px; font-weight:600;
-    transition:all .15s; margin-top:10px;
+    transition:all .2s ease; margin-top:10px;
   }
-  #project2:hover{background:var(--accent); color:#fff;}
-  .hint{font-size:12px; color:var(--muted); text-align:center; margin-top:12px;}
-  .mode-hint{font-size:12px; color:var(--muted); text-align:center; margin-bottom:8px; min-height:16px;}
+  #project:hover{background:var(--accent); color:#07111f;}
+  #project2:hover{background:var(--accent); color:#07111f;}
+  .hint{font-size:12px; color:var(--muted); text-align:center; margin:12px 0 0; line-height:1.5;}
+  .mode-hint{font-size:12px; color:var(--muted); text-align:center; margin:0 auto; max-width:42ch; min-height:16px; line-height:1.5;}
 
   /* ---------- Projector view ---------- */
   body.projector{
@@ -133,7 +140,7 @@
     width:100%;
   }
   #projectorLogo{
-    height:12vh; width:auto; max-width:60vw;
+    height:16vh; width:auto; max-width:60vw;
     object-fit:contain;
     filter: drop-shadow(0 4px 24px rgba(200,168,75,0.45));
   }
@@ -200,7 +207,7 @@
         <div class="gold-rule"></div>
       </div>
       <div id="projectorInner">
-        <div id="bigDisplay">00:00:00</div>
+        <div id="bigDisplay" role="timer" aria-live="off">00:00:00</div>
         <div id="modeLabel">--</div>
       </div>
       <div id="projectorFooter">
@@ -219,7 +226,7 @@
           <button data-mode="stopwatch">Stopwatch</button>
         </div>
         <p class="mode-hint" id="modeHint">Counts up from a set start time. Click the display to edit.</p>
-        <div class="display editable" id="display" title="Click to edit time">00:00:00</div>
+        <div class="display editable" id="display" role="timer" aria-live="polite" title="Click to edit time">00:00:00</div>
         <div class="edit-row" id="editRow" style="display:none;">
           <div class="edit-col">
             <input type="number" id="h" min="0" max="23" value="0">
@@ -295,7 +302,9 @@
     };
 
     document.body.addEventListener('click', () => {
-      if(!document.fullscreenElement) document.documentElement.requestFullscreen();
+      if(!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
     });
     channel.postMessage({ hello: true });  // ask the control window for the current time
     return;
