@@ -4,6 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Timer</title>
+<meta name="theme-color" content="#0f1115">
+<meta name="app-version" content="0">
+<script>
+/* Portable-file self-update: if a newer build was downloaded earlier (see update
+   check at the bottom), run that copy instead of the one embedded in this file. */
+(function(){
+  if(location.protocol !== 'file:') return;
+  try {
+    var mine = +document.querySelector('meta[name="app-version"]').content;
+    var saved = JSON.parse(localStorage.getItem('timer-app-update') || 'null');
+    if(saved && saved.v > mine){
+      document.open(); document.write(saved.html); document.close();
+    }
+  } catch(e){}
+})();
+</script>
 <style>
   :root{
     --bg:#0f1115; --panel:#171a21; --accent:#4f9dff; --accent2:#ff5d5d;
@@ -151,7 +167,9 @@
   document.body.className = isProjector ? 'projector' : 'control';
 
   if(isProjector){
-    const logoSrc = view === 'projector2' ? 'ecclesia-logo.png?v=1' : 'logo.png?v=3';
+    const LOGO_MAIN = 'logo.png?v=3';
+    const LOGO_ECCLESIA = 'ecclesia-logo.png?v=1';
+    const logoSrc = view === 'projector2' ? LOGO_ECCLESIA : LOGO_MAIN;
     const logoAlt = view === 'projector2' ? 'Ecclesia' : '24 Hours with the King';
     document.body.innerHTML = `
       <div id="projectorHeader">
@@ -547,6 +565,45 @@
   }
   
   render();
+})();
+</script>
+
+<script>
+/* ---- Offline / auto-update ---------------------------------------------
+   Hosted (http/https): installable PWA; the service worker caches the app and
+   refreshes it whenever the site is reachable.
+   Portable file (file://): checks the hosted copy when online, stores a newer
+   build, and offers it on the next open. It never reloads by itself, so a
+   running timer is not interrupted. */
+(function(){
+  const SITE = 'https://cruslin.github.io/timer-app/';
+
+  if(location.protocol.startsWith('http')){
+    const link = document.createElement('link');
+    link.rel = 'manifest'; link.href = 'manifest.webmanifest';
+    document.head.appendChild(link);
+    if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+    return;
+  }
+  if(location.protocol !== 'file:' || isProjector || !navigator.onLine) return;
+
+  const mine = +document.querySelector('meta[name="app-version"]').content;
+  const timeout = ms => AbortSignal.timeout(ms);
+
+  fetch(SITE + 'version.json', {cache:'no-store', signal: timeout(8000)})
+    .then(r => r.json())
+    .then(async ({v}) => {
+      const saved = JSON.parse(localStorage.getItem('timer-app-update') || 'null');
+      if(!(v > mine) || (saved && saved.v >= v)) return;
+      const html = await (await fetch(SITE + 'index.html', {cache:'no-store', signal: timeout(30000)})).text();
+      localStorage.setItem('timer-app-update', JSON.stringify({v, html}));
+      const bar = document.createElement('div');
+      bar.textContent = 'Update downloaded — it will be used the next time you open this file.';
+      bar.style.cssText = 'position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:#171a21;color:#e9edf3;border:1px solid #4f9dff;border-radius:8px;padding:8px 14px;font:13px sans-serif;z-index:9';
+      document.body.appendChild(bar);
+      setTimeout(() => bar.remove(), 10000);
+    })
+    .catch(() => {});
 })();
 </script>
 </body>
