@@ -13,7 +13,7 @@
   "build": {
     "appId": "org.riders.timer",
     "productName": "Timer",
-    "files": ["main.js", "app/**/*"],
+    "files": ["main.js", "preload.js", "app/**/*"],
     "win": {
       "target": "portable",
       "signAndEditExecutable": false,

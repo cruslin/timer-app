@@ -10,7 +10,7 @@
 /* Portable-file self-update: if a newer build was downloaded earlier (see update
    check at the bottom), run that copy instead of the one embedded in this file. */
 (function(){
-  if(location.protocol !== 'file:') return;
+  if(location.protocol !== 'file:' || window.timerDesktop) return;  // the desktop app does its own updating
   try {
     var mine = +document.querySelector('meta[name="app-version"]').content;
     var saved = JSON.parse(localStorage.getItem('timer-app-update') || 'null');
@@ -654,7 +654,11 @@
       // Once per version per window, so a stale CDN copy can't cause a reload loop.
       if(sessionStorage.getItem('timer-app-reload') == v) return;
 
-      if(isFile){
+      if(window.timerDesktop){
+        // Desktop app: hand the new page to the shell, which loads it on the reload.
+        const html = await (await fetch(base + 'index.html', {cache:'no-store', signal: AbortSignal.timeout(30000)})).text();
+        if(!await window.timerDesktop.saveUpdate(v, html)) return;
+      } else if(isFile){
         const saved = JSON.parse(localStorage.getItem('timer-app-update') || 'null');
         if(!saved || saved.v < v){
           const html = await (await fetch(base + 'index.html', {cache:'no-store', signal: AbortSignal.timeout(30000)})).text();
