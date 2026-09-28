@@ -71,6 +71,12 @@
     transition:all .15s;
   }
   #project:hover{background:var(--accent); color:#fff;}
+  #project2{
+    width:100%; padding:14px; border:1px solid var(--accent); background:transparent;
+    color:var(--accent); border-radius:10px; cursor:pointer; font-size:15px; font-weight:600;
+    transition:all .15s; margin-top:10px;
+  }
+  #project2:hover{background:var(--accent); color:#fff;}
   .hint{font-size:12px; color:var(--muted); text-align:center; margin-top:12px;}
   .mode-hint{font-size:12px; color:var(--muted); text-align:center; margin-bottom:8px; min-height:16px;}
 
@@ -85,16 +91,16 @@
   /* Logo header */
   #projectorHeader{
     display:flex; flex-direction:column; align-items:center;
-    padding:2.5vh 4vw 0;
+    padding:1vh 4vw 0;
     width:100%;
   }
   #projectorLogo{
-    height:30vh; width:auto; max-width:80vw;
+    height:12vh; width:auto; max-width:60vw;
     object-fit:contain;
     filter: drop-shadow(0 4px 24px rgba(200,168,75,0.45));
   }
   .gold-rule{
-    width:60%; height:1px; margin-top:1.5vh;
+    width:60%; height:1px; margin-top:1vh;
     background: linear-gradient(90deg, transparent, #c8a84b, #ffd700, #c8a84b, transparent);
   }
 
@@ -104,8 +110,8 @@
     flex:1;
   }
   #bigDisplay{
-    font-size:15vw; font-weight:700; font-variant-numeric:tabular-nums;
-    letter-spacing:0.05em; color:#ffd700; transition:color .3s; line-height:1;
+    font-size:min(19vw, 48vh); font-weight:700; font-variant-numeric:tabular-nums;
+    letter-spacing:0.02em; color:#ffd700; transition:color .3s; line-height:1;
     text-shadow: 0 0 60px rgba(255,215,0,0.3), 0 3px 0 rgba(150,110,0,0.7);
   }
   #bigDisplay.stopped{
@@ -117,17 +123,17 @@
     text-shadow: 0 0 120px rgba(255,215,0,0.9), 0 0 50px rgba(255,215,0,0.6);
   }
   #modeLabel{
-    font-size:1.8vw; color:#c8a84b; letter-spacing:8px;
-    text-transform:uppercase; margin-top:1.5vh; text-align:center;
+    font-size:2vw; color:#c8a84b; letter-spacing:8px;
+    text-transform:uppercase; margin-top:1vh; text-align:center;
   }
 
   /* Bottom footer */
   #projectorFooter{
     display:flex; justify-content:space-between; align-items:center;
-    width:100%; padding:0 2.5vw 2vh;
+    width:100%; padding:0 2.5vw 1vh;
   }
   .corner-dot{
-    width:1vw; height:1vw; border-radius:50%; background:#c8a84b;
+    width:0.8vw; height:0.8vw; border-radius:50%; background:#c8a84b;
     box-shadow:0 0 10px rgba(200,168,75,0.7);
   }
   .footer-rule{
@@ -140,13 +146,16 @@
 
 <script>
   const params = new URLSearchParams(window.location.search);
-  const isProjector = params.get('view') === 'projector';
+  const view = params.get('view');
+  const isProjector = view === 'projector' || view === 'projector2';
   document.body.className = isProjector ? 'projector' : 'control';
 
   if(isProjector){
+    const logoSrc = view === 'projector2' ? 'ecclesia-logo.png?v=1' : 'logo.png?v=3';
+    const logoAlt = view === 'projector2' ? 'Ecclesia' : '24 Hours with the King';
     document.body.innerHTML = `
       <div id="projectorHeader">
-        <img id="projectorLogo" src="logo.png?v=3" alt="24 Hours with the King">
+        <img id="projectorLogo" src="${logoSrc}" alt="${logoAlt}">
         <div class="gold-rule"></div>
       </div>
       <div id="projectorInner">
@@ -190,6 +199,7 @@
           <button id="reset">Reset</button>
         </div>
         <button id="project">&#128250; Project to Second Screen</button>
+        <button id="project2">&#128250; Project to Second Screen (Ecclesia)</button>
         <p class="hint">Opens a fullscreen timer window &mdash; drag it to your projector/TV, then press F11.</p>
         <p class="hint">Keyboard: <strong>Space</strong> = Start/Stop &nbsp;|&nbsp; <strong>R</strong> = Reset</p>
       </div>
@@ -344,6 +354,7 @@
   const resetBtn    = document.getElementById('reset');
   const editRow     = document.getElementById('editRow');
   const projectBtn  = document.getElementById('project');
+  const project2Btn = document.getElementById('project2');
   const modeHint    = document.getElementById('modeHint');
 
   function broadcast(){
@@ -495,6 +506,12 @@
 
   projectBtn.addEventListener('click', () => {
     window.open(window.location.pathname + '?view=projector', 'projector',
+      'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no');
+    broadcast();
+  });
+
+  project2Btn.addEventListener('click', () => {
+    window.open(window.location.pathname + '?view=projector2', 'projector2',
       'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no');
     broadcast();
   });
