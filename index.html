@@ -15,7 +15,29 @@
     var mine = +document.querySelector('meta[name="app-version"]').content;
     var saved = JSON.parse(localStorage.getItem('timer-app-update') || 'null');
     if(saved && saved.v > mine){
-      document.open(); document.write(saved.html); document.close();
+      // Halt parsing so nothing else in this copy runs, then swap in the newer
+      // page. (document.write can't be used: it is ignored while parsing.)
+      window.stop();
+      setTimeout(function(){
+        var next = new DOMParser().parseFromString(saved.html, 'text/html');
+        var head = document.head;
+        var body = document.body || document.documentElement.appendChild(document.createElement('body'));
+        while(head.firstChild) head.removeChild(head.firstChild);
+        while(body.firstChild) body.removeChild(body.firstChild);
+        function adopt(from, to){
+          Array.prototype.slice.call(from.childNodes).forEach(function(node){
+            if(node.nodeName === 'SCRIPT'){           // re-create so it executes
+              var sc = document.createElement('script');
+              sc.textContent = node.textContent;
+              to.appendChild(sc);
+            } else {
+              to.appendChild(document.importNode(node, true));
+            }
+          });
+        }
+        adopt(next.head, head);
+        adopt(next.body, body);
+      }, 0);
     }
   } catch(e){}
 })();
@@ -161,9 +183,10 @@
 <body>
 
 <script>
-  const params = new URLSearchParams(window.location.search);
-  const view = params.get('view');
-  const isProjector = view === 'projector' || view === 'projector2';
+  /* var, not const: the portable file may replace the page via document.write, which keeps the old global scope */
+  var params = new URLSearchParams(window.location.search);
+  var view = params.get('view');
+  var isProjector = view === 'projector' || view === 'projector2';
   document.body.className = isProjector ? 'projector' : 'control';
 
   if(isProjector){
@@ -216,7 +239,7 @@
           <button id="startStop">Start</button>
           <button id="reset">Reset</button>
         </div>
-        <button id="project">&#128250; Project to Second Screen</button>
+        <button id="project">&#128250; Project to Second Screen (24hours)</button>
         <button id="project2">&#128250; Project to Second Screen (Ecclesia)</button>
         <p class="hint">Opens a fullscreen timer window &mdash; drag it to your projector/TV, then press F11.</p>
         <p class="hint">Keyboard: <strong>Space</strong> = Start/Stop &nbsp;|&nbsp; <strong>R</strong> = Reset</p>
@@ -263,6 +286,7 @@
     const modeNames  = { countup:'Count Up', countdown:'Countdown', stopwatch:'Stopwatch' };
 
     channel.onmessage = (e) => {
+      if(!e.data || e.data.display === undefined) return;
       const { display, running, finished, mode } = e.data;
       bigDisplay.textContent = display;
       bigDisplay.classList.toggle('stopped', !running && !finished);
@@ -273,6 +297,7 @@
     document.body.addEventListener('click', () => {
       if(!document.fullscreenElement) document.documentElement.requestFullscreen();
     });
+    channel.postMessage({ hello: true });  // ask the control window for the current time
     return;
   }
 
@@ -378,6 +403,7 @@
   function broadcast(){
     channel.postMessage({ display: fmt(totalSeconds), running, finished, mode });
   }
+  channel.onmessage = (e) => { if(e.data && e.data.hello) broadcast(); };
 
   function render(){
     display.textContent = fmt(totalSeconds);
@@ -571,39 +597,71 @@
 <script>
 /* ---- Offline / auto-update ---------------------------------------------
    Hosted (http/https): installable PWA; the service worker caches the app and
-   refreshes it whenever the site is reachable.
-   Portable file (file://): checks the hosted copy when online, stores a newer
-   build, and offers it on the next open. It never reloads by itself, so a
-   running timer is not interrupted. */
+   serves the cached copy when offline.
+   Portable file (file://): the newest build is downloaded from the hosted site
+   and used in place of the embedded one on reload.
+   Both: while online, the control window checks for a new build every minute.
+   When one is found, every window reloads itself. The timer state is stored
+   with its start time, so a running timer carries on across the reload. */
 (function(){
   const SITE = 'https://cruslin.github.io/timer-app/';
+  const isFile = location.protocol === 'file:';
+  const isHttp = location.protocol.startsWith('http');
+  if(!isFile && !isHttp) return;
 
-  if(location.protocol.startsWith('http')){
+  if(isHttp){
     const link = document.createElement('link');
     link.rel = 'manifest'; link.href = 'manifest.webmanifest';
     document.head.appendChild(link);
     if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
+  const updates = new BroadcastChannel('timer-update');
+
+  if(isProjector){
+    updates.onmessage = e => { if(e.data === 'reload') location.reload(); };
     return;
   }
-  if(location.protocol !== 'file:' || isProjector || !navigator.onLine) return;
 
   const mine = +document.querySelector('meta[name="app-version"]').content;
-  const timeout = ms => AbortSignal.timeout(ms);
+  if(!mine) return;  // unbuilt dev copy: never replace it
+  const base = isFile ? SITE : '';
+  const CHECK_MS = 60000;
 
-  fetch(SITE + 'version.json', {cache:'no-store', signal: timeout(8000)})
-    .then(r => r.json())
-    .then(async ({v}) => {
-      const saved = JSON.parse(localStorage.getItem('timer-app-update') || 'null');
-      if(!(v > mine) || (saved && saved.v >= v)) return;
-      const html = await (await fetch(SITE + 'index.html', {cache:'no-store', signal: timeout(30000)})).text();
-      localStorage.setItem('timer-app-update', JSON.stringify({v, html}));
-      const bar = document.createElement('div');
-      bar.textContent = 'Update downloaded — it will be used the next time you open this file.';
-      bar.style.cssText = 'position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:#171a21;color:#e9edf3;border:1px solid #4f9dff;border-radius:8px;padding:8px 14px;font:13px sans-serif;z-index:9';
-      document.body.appendChild(bar);
-      setTimeout(() => bar.remove(), 10000);
-    })
-    .catch(() => {});
+  function toast(text){
+    const bar = document.createElement('div');
+    bar.textContent = text;
+    bar.style.cssText = 'position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:#171a21;color:#e9edf3;border:1px solid #4f9dff;border-radius:8px;padding:8px 14px;font:13px sans-serif;z-index:9';
+    document.body.appendChild(bar);
+  }
+
+  async function check(){
+    if(!navigator.onLine) return;
+    // Don't yank the page away while someone is typing a time.
+    if(document.activeElement && document.activeElement.tagName === 'INPUT') return;
+    try {
+      const {v} = await (await fetch(base + 'version.json', {cache:'no-store', signal: AbortSignal.timeout(8000)})).json();
+      if(!(v > mine)) return;
+      // Once per version per window, so a stale CDN copy can't cause a reload loop.
+      if(sessionStorage.getItem('timer-app-reload') == v) return;
+
+      if(isFile){
+        const saved = JSON.parse(localStorage.getItem('timer-app-update') || 'null');
+        if(!saved || saved.v < v){
+          const html = await (await fetch(base + 'index.html', {cache:'no-store', signal: AbortSignal.timeout(30000)})).text();
+          localStorage.setItem('timer-app-update', JSON.stringify({v, html}));
+        }
+      }
+      sessionStorage.setItem('timer-app-reload', v);
+      toast('Updating to the latest version…');
+      updates.postMessage('reload');
+      setTimeout(() => location.reload(), 600);
+    } catch(e){ console.warn('update check failed:', e); }  // offline or unreachable: try again next time
+  }
+
+  check();
+  setInterval(check, CHECK_MS);
+  addEventListener('online', check);
 })();
 </script>
 </body>
